@@ -9,4 +9,4 @@ In order for Ino to successfully compile and write some file structure changes w
 -renamed Marlin.ino to sketch.ino
 -commented out FORCE_INLINE function
 
-To run the identical firmware through Arduino software interface, revert the above changes.
+To run the identical firmware through Arduino software interface, revert the above changes. 
