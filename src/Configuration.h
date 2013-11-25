@@ -234,6 +234,28 @@ const bool Z_ENDSTOPS_INVERTING = false; // set to true to invert the logic of t
 #define DEFAULT_ZJERK                 14.0   // (mm/sec)
 #define DEFAULT_EJERK                 20.0   // (mm/sec)
 
+
+#define EUCLID_PLATFORM
+
+//========================Euclid platform homing settings======================
+#ifdef EUCLID_PLATFORM
+  #define ZTOWER_X -4.5		// X,Y coordinates of the Z tower button
+  #define ZTOWER_Y 95
+
+  #define XTOWER_X -82		// X,Y coordinates of the X tower button
+  #define XTOWER_Y -39
+
+  #define YTOWER_X 72		// X,Y coordinates of the Y tower button
+  #define YTOWER_Y -39
+
+  #define HOVER_HEIGHT 10	// Noncorrected height above the button to start the zeroing routine
+  #define BUTTON_MIN -5		// Minimum noncorrected height to continue the zeroing routine before giving up.
+
+  #define BUILD_PLANE_BUTTON_PIN 18	// Digital input that the homing buttons are connected to.
+  
+#endif
+
+
 //===========================================================================
 //=============================Additional Features===========================
 //===========================================================================
@@ -285,6 +307,7 @@ const bool Z_ENDSTOPS_INVERTING = false; // set to true to invert the logic of t
     #define LCD_HEIGHT 2    
   #endif
 #endif
+
 
 // Increase the FAN pwm frequency. Removes the PWM noise but increases heating in the FET/Arduino
 //#define FAST_PWM_FAN
