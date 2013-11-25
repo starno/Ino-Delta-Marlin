@@ -235,7 +235,15 @@ bool Stopped=false;
 void get_arc_coordinates();
 
 #ifdef EUCLID_PLATFORM
-void doPlatformLeveling();
+void doPlatformLeveling();  // Run the platform leveling routine
+float calculateZError(float x, float y);  // Calculate the z error for a given (x,y) coordinate
+
+bool enablePlatformErrorCalculation; // Set to true after leveling
+
+float alpha_x;  // Components of the platform leveling normal vector
+float alpha_y;
+float alpha_z;
+
 #endif
 
 void serial_echopair_P(const char *s_P, float v)
@@ -371,6 +379,10 @@ void setup()
   setup_photpin();
   
   LCD_INIT;
+
+#ifdef EUCLID
+  enablePlatformErrorCalculation = false;
+#endif
 }
 
 
@@ -1664,6 +1676,12 @@ void calculate_delta(float cartesian[3])
 
 void prepare_move()
 {
+#ifdef EUCLID_PLATFORM
+  if(enablePlatformErrorCalculation) {
+    destination[Z_AXIS] += calculateZError(destination[X_AXIS], destination[Y_AXIS]);
+  }
+#endif
+
   clamp_to_software_endstops(destination);
 
   previous_millis_cmd = millis(); 
@@ -1929,7 +1947,6 @@ void doPlatformLeveling()
   float xTower[3];
   float yTower[3];
   float zTower[3];
-//  float[3] planeVector1, planeVector2, normalVector;
 
   pinMode(BUILD_PLANE_BUTTON_PIN,INPUT);
   float z;
@@ -1962,11 +1979,42 @@ void doPlatformLeveling()
   moveToXYZ(YTOWER_X, YTOWER_Y,HOVER_HEIGHT);    //y hover
   delay(50); // Give the motion planner time to pick up the command
 
-  SERIAL_ECHO("Z is at:");
+  SERIAL_ECHO("\r\nZ is at:");
   SERIAL_ECHO(zTower[Z_AXIS]);
-  SERIAL_ECHO("X is at:");
+  SERIAL_ECHO("\r\nX is at:");
   SERIAL_ECHO(xTower[Z_AXIS]);
-  SERIAL_ECHO("Y is at:");
+  SERIAL_ECHO("\r\nY is at:");
   SERIAL_ECHO(yTower[Z_AXIS]);
+
+  // Now calculate the platform plane
+  float XYi = (yTower[X_AXIS] - xTower[X_AXIS]);
+  float XYj = (yTower[Y_AXIS] - xTower[Y_AXIS]);
+  float XYk = (yTower[Z_AXIS] - xTower[Z_AXIS]);
+
+  float XZi = (zTower[X_AXIS] - xTower[X_AXIS]);
+  float XZj = (zTower[Y_AXIS] - xTower[Y_AXIS]);
+  float XZk = (zTower[Z_AXIS] - xTower[Z_AXIS]);
+
+  float alpha_x = XYj*XZk - XYk*XZj;
+  float alpha_y = XYk*XZi - XYi*XZk;
+  float alpha_z = XYi*XZj - XYj*XZi;
+
+  SERIAL_ECHO("\r\nalpha_x is at:");
+  SERIAL_ECHO(alpha_x);
+  SERIAL_ECHO("\r\nalpha_y is at:");
+  SERIAL_ECHO(alpha_y);
+  SERIAL_ECHO("\r\nalpha_z is at:");
+  SERIAL_ECHO(alpha_z);
+
+  enablePlatformErrorCalculation = true;
+}
+
+float calculateZError(float x, float y)
+{
+  float zError = ((alpha_x*(x - ZTOWER_X) + alpha_y*(y - ZTOWER_Y))/alpha_z);
+  SERIAL_ECHO("  zError:");
+  SERIAL_ECHO(zError);
+//  return zError;
+  return 0;
 }
 #endif

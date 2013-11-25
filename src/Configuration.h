@@ -242,11 +242,11 @@ const bool Z_ENDSTOPS_INVERTING = false; // set to true to invert the logic of t
   #define ZTOWER_X -4.5		// X,Y coordinates of the Z tower button
   #define ZTOWER_Y 95
 
-  #define XTOWER_X -82		// X,Y coordinates of the X tower button
-  #define XTOWER_Y -39
+  #define XTOWER_X -83		// X,Y coordinates of the X tower button
+  #define XTOWER_Y -39.5
 
-  #define YTOWER_X 72		// X,Y coordinates of the Y tower button
-  #define YTOWER_Y -39
+  #define YTOWER_X 72.5		// X,Y coordinates of the Y tower button
+  #define YTOWER_Y -39.5
 
   #define HOVER_HEIGHT 10	// Noncorrected height above the button to start the zeroing routine
   #define BUTTON_MIN -5		// Minimum noncorrected height to continue the zeroing routine before giving up.
