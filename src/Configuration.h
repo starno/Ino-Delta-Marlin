@@ -252,6 +252,8 @@ const bool Z_ENDSTOPS_INVERTING = false; // set to true to invert the logic of t
   #define BUTTON_MIN -5		// Minimum noncorrected height to continue the zeroing routine before giving up.
 
   #define BUILD_PLANE_BUTTON_PIN 18	// Digital input that the homing buttons are connected to.
+
+  #define BUILD_PLANE_OFFSET 5   // Difference in height between the top of the button and the build platform
   
 #endif
 
