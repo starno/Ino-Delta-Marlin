@@ -53,10 +53,10 @@
 #define DELTA_SMOOTH_ROD_OFFSET 195.0 // mm
 
 // Horizontal offset of the universal joints on the end effector.
-#define DELTA_EFFECTOR_OFFSET 45.3  // mm  (Proto2 43.5, Proto3 44.5, variance due to printed parts)
+#define DELTA_EFFECTOR_OFFSET 40.0  // mm  (Proto2 43.5, Proto3 44.5, variance due to printed parts)
 
 // Horizontal offset of the universal joints on the carriages.
-#define DELTA_CARRIAGE_OFFSET 25.0 // mm
+#define DELTA_CARRIAGE_OFFSET 23.0 // mm
 
 // Effective horizontal distance bridged by diagonal push rods.
 #define DELTA_RADIUS (DELTA_SMOOTH_ROD_OFFSET-DELTA_EFFECTOR_OFFSET-DELTA_CARRIAGE_OFFSET)
@@ -1679,9 +1679,11 @@ void prepare_move()
   if (cartesian_mm < 0.000001) { return; }
   float seconds = 6000 * cartesian_mm / feedrate / feedmultiply;
   int steps = max(1, int(DELTA_SEGMENTS_PER_SECOND * seconds));
-  SERIAL_ECHOPGM("mm="); SERIAL_ECHO(cartesian_mm);
-  SERIAL_ECHOPGM(" seconds="); SERIAL_ECHO(seconds);
-  SERIAL_ECHOPGM(" steps="); SERIAL_ECHOLN(steps);
+  if (steps > 1) {
+    SERIAL_ECHOPGM("mm="); SERIAL_ECHO(cartesian_mm);
+    SERIAL_ECHOPGM(" seconds="); SERIAL_ECHO(seconds);
+    SERIAL_ECHOPGM(" steps="); SERIAL_ECHOLN(steps);
+  }
   for (int s = 1; s <= steps; s++) {
     float fraction = float(s) / float(steps);
     for(int8_t i=0; i < NUM_AXIS; i++) {
@@ -1914,7 +1916,7 @@ float pressButton(float x, float y, float zHover, float zMin)
 {
   float z=zHover;
   
-  while((digitalRead(BUILD_PLANE_BUTTON_PIN)!=0) && (z > zMin)) //go until we hit the button
+  while((digitalRead(BUILD_PLANE_BUTTON_PIN)==HIGH) && (z > zMin)) //go until we hit the button
     {
       moveToXYZ(x, y, z);
       //delay(50);
@@ -1931,7 +1933,7 @@ void doPlatformLeveling()
   float zTower[3];
 //  float[3] planeVector1, planeVector2, normalVector;
 
-  pinMode(BUILD_PLANE_BUTTON_PIN,INPUT);
+  pinMode(BUILD_PLANE_BUTTON_PIN,INPUT_PULLUP);
   float z;
   moveToXYZ(0,0,50);        // center 
 
@@ -1962,11 +1964,12 @@ void doPlatformLeveling()
   moveToXYZ(YTOWER_X, YTOWER_Y,HOVER_HEIGHT);    //y hover
   delay(50); // Give the motion planner time to pick up the command
 
-  SERIAL_ECHO("Z is at:");
-  SERIAL_ECHO(zTower[Z_AXIS]);
-  SERIAL_ECHO("X is at:");
+  SERIAL_ECHO("\nXYZ ");
   SERIAL_ECHO(xTower[Z_AXIS]);
-  SERIAL_ECHO("Y is at:");
+  SERIAL_ECHO(", ");
   SERIAL_ECHO(yTower[Z_AXIS]);
+  SERIAL_ECHO(", ");
+  SERIAL_ECHO(zTower[Z_AXIS]);
+  SERIAL_ECHO("\n");
 }
 #endif

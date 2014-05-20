@@ -214,7 +214,7 @@ const bool Z_ENDSTOPS_INVERTING = false; // set to true to invert the logic of t
 // For Rostock this means top and center of the cartesian print volume.
 #define X_HOME_POS 0
 #define Y_HOME_POS 0
-#define Z_HOME_POS 176.1 // Distance between nozzle and print surface after homing.
+#define Z_HOME_POS 180.0 // Distance between nozzle and print surface after homing.
 
 //// MOVEMENT SETTINGS
 #define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E
@@ -239,16 +239,16 @@ const bool Z_ENDSTOPS_INVERTING = false; // set to true to invert the logic of t
 
 //========================Euclid platform homing settings======================
 #ifdef EUCLID_PLATFORM
-  #define ZTOWER_X -4.5		// X,Y coordinates of the Z tower button
-  #define ZTOWER_Y 95
+  #define ZTOWER_X -4		// X,Y coordinates of the Z tower button
+  #define ZTOWER_Y 97
 
-  #define XTOWER_X -82		// X,Y coordinates of the X tower button
-  #define XTOWER_Y -39
+  #define XTOWER_X -85		// X,Y coordinates of the X tower button
+  #define XTOWER_Y -42.5
 
-  #define YTOWER_X 72		// X,Y coordinates of the Y tower button
-  #define YTOWER_Y -39
+  #define YTOWER_X 77.5		// X,Y coordinates of the Y tower button
+  #define YTOWER_Y -43
 
-  #define HOVER_HEIGHT 10	// Noncorrected height above the button to start the zeroing routine
+  #define HOVER_HEIGHT 5	// Noncorrected height above the button to start the zeroing routine
   #define BUTTON_MIN -5		// Minimum noncorrected height to continue the zeroing routine before giving up.
 
   #define BUILD_PLANE_BUTTON_PIN 18	// Digital input that the homing buttons are connected to.
