@@ -113,7 +113,6 @@
 // M29  - Stop SD write
 // M30  - Delete file from SD (M30 filename.g)
 // M31  - Output time since last M109 or SD card start to serial
-// M33 -  Platform homing routine
 // M42  - Change pin status via gcode
 // M80  - Turn on Power Supply
 // M81  - Turn off Power Supply
@@ -233,18 +232,6 @@ bool Stopped=false;
 //===========================================================================
 
 void get_arc_coordinates();
-
-#ifdef EUCLID_PLATFORM
-void doPlatformLeveling();  // Run the platform leveling routine
-float calculateZError(float x, float y);  // Calculate the z error for a given (x,y) coordinate
-
-bool enablePlatformErrorCalculation; // Set to true after leveling
-
-float alpha_x;  // Components of the platform leveling normal vector
-float alpha_y;
-float alpha_z;
-
-#endif
 
 void serial_echopair_P(const char *s_P, float v)
     { serialprintPGM(s_P); SERIAL_ECHO(v); }
@@ -379,10 +366,6 @@ void setup()
   setup_photpin();
   
   LCD_INIT;
-
-#ifdef EUCLID
-  enablePlatformErrorCalculation = false;
-#endif
 }
 
 
@@ -967,13 +950,6 @@ void process_commands()
       autotempShutdown();
       }
       break;
-
-#ifdef EUCLID_PLATFORM
-    case 33:
-      doPlatformLeveling();
-      break;
-#endif
-
     case 42: //M42 -Change pin status via gcode
       if (code_seen('S'))
       {
@@ -1676,12 +1652,6 @@ void calculate_delta(float cartesian[3])
 
 void prepare_move()
 {
-#ifdef EUCLID_PLATFORM
-  if(enablePlatformErrorCalculation) {
-    destination[Z_AXIS] += calculateZError(destination[X_AXIS], destination[Y_AXIS]);
-  }
-#endif
-
   clamp_to_software_endstops(destination);
 
   previous_millis_cmd = millis(); 
@@ -1914,107 +1884,5 @@ void setPwmFrequency(uint8_t pin, int val)
 
   }
 }
-
-
 #endif
 
-#ifdef EUCLID_PLATFORM
-
-void moveToXYZ(float x, float y, float z)
-{
-  destination[X_AXIS] = x;
-  destination[Y_AXIS] = y;
-  destination[Z_AXIS] = z;
-  prepare_move();
-}
-
-float pressButton(float x, float y, float zHover, float zMin)
-{
-  float z=zHover;
-  
-  while((digitalRead(BUILD_PLANE_BUTTON_PIN)!=0) && (z > zMin)) //go until we hit the button
-    {
-      moveToXYZ(x, y, z);
-      //delay(50);
-      z-=0.01;
-    }
-  SERIAL_ECHO(z);
-  return z;  
-}
-
-void doPlatformLeveling()
-{
-  float xTower[3];
-  float yTower[3];
-  float zTower[3];
-
-  pinMode(BUILD_PLANE_BUTTON_PIN,INPUT);
-  float z;
-  moveToXYZ(0,0,50);        // center 
-
-  // Find the Z tower button
-  moveToXYZ(ZTOWER_X, ZTOWER_Y,HOVER_HEIGHT);    //z hover
-  z=pressButton(ZTOWER_X, ZTOWER_Y, HOVER_HEIGHT, BUTTON_MIN);
-  zTower[X_AXIS]=ZTOWER_X;
-  zTower[Y_AXIS]=ZTOWER_Y;
-  zTower[Z_AXIS]=z+BUILD_PLANE_OFFSET;
-  moveToXYZ(ZTOWER_X, ZTOWER_Y,HOVER_HEIGHT);    //z hover
-  delay(50); // Give the motion planner time to pick up the command
-  
-  // Find the X tower button
-  moveToXYZ(XTOWER_X, XTOWER_Y,HOVER_HEIGHT);    //x hover
-  z=pressButton(XTOWER_X, XTOWER_Y, HOVER_HEIGHT, BUTTON_MIN);
-  xTower[X_AXIS]=XTOWER_X;
-  xTower[Y_AXIS]=XTOWER_Y;
-  xTower[Z_AXIS]=z+BUILD_PLANE_OFFSET;
-  moveToXYZ(XTOWER_X, XTOWER_Y,HOVER_HEIGHT);    //x hover
-  delay(50); // Give the motion planner time to pick up the command
-
-  // Find the Y tower button
-  moveToXYZ(YTOWER_X, YTOWER_Y,HOVER_HEIGHT);    //y hover
-  z=pressButton(YTOWER_X, YTOWER_Y, HOVER_HEIGHT, BUTTON_MIN);
-  yTower[X_AXIS]=YTOWER_X;
-  yTower[Y_AXIS]=YTOWER_Y;
-  yTower[Z_AXIS]=z+BUILD_PLANE_OFFSET;
-  moveToXYZ(YTOWER_X, YTOWER_Y,HOVER_HEIGHT);    //y hover
-  delay(50); // Give the motion planner time to pick up the command
-
-  SERIAL_ECHO("\r\nZ is at:");
-  SERIAL_ECHO(zTower[Z_AXIS]);
-  SERIAL_ECHO("\r\nX is at:");
-  SERIAL_ECHO(xTower[Z_AXIS]);
-  SERIAL_ECHO("\r\nY is at:");
-  SERIAL_ECHO(yTower[Z_AXIS]);
-
-  // Now calculate the platform plane
-  float XYi = (yTower[X_AXIS] - xTower[X_AXIS]);
-  float XYj = (yTower[Y_AXIS] - xTower[Y_AXIS]);
-  float XYk = (yTower[Z_AXIS] - xTower[Z_AXIS]);
-
-  float XZi = (zTower[X_AXIS] - xTower[X_AXIS]);
-  float XZj = (zTower[Y_AXIS] - xTower[Y_AXIS]);
-  float XZk = (zTower[Z_AXIS] - xTower[Z_AXIS]);
-
-  float alpha_x = XYj*XZk - XYk*XZj;
-  float alpha_y = XYk*XZi - XYi*XZk;
-  float alpha_z = XYi*XZj - XYj*XZi;
-
-  SERIAL_ECHO("\r\nalpha_x is at:");
-  SERIAL_ECHO(alpha_x);
-  SERIAL_ECHO("\r\nalpha_y is at:");
-  SERIAL_ECHO(alpha_y);
-  SERIAL_ECHO("\r\nalpha_z is at:");
-  SERIAL_ECHO(alpha_z);
-
-  enablePlatformErrorCalculation = true;
-}
-
-float calculateZError(float x, float y)
-{
-  float zError = ((alpha_x*(x - ZTOWER_X) + alpha_y*(y - ZTOWER_Y))/alpha_z);
-  SERIAL_ECHO("  zError:");
-  SERIAL_ECHO(zError);
-//  return zError;
-  return 0;
-}
-#endif

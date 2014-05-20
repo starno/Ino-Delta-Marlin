@@ -10,10 +10,5 @@ In order for Ino to successfully compile and write some file structure changes w
 -renamed Marlin.ino to sketch.ino
 -commented out FORCE_INLINE function
 
-Then build the firmware using:
-ino build --board-model mega2560
-
-
-
 
 To run the identical firmware through Arduino software interface, revert the above changes. 
