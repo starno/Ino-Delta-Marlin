@@ -28,94 +28,96 @@
 #endif
 
 // public functions
-void tp_init();  //initialise the heating
+void tp_init();  //initialize the heating
 void manage_heater(); //it is critical that this is called periodically.
 
-//low leven conversion routines
-// do not use this routines and variables outsie of temperature.cpp
-int temp2analog(int celsius, uint8_t e);
-int temp2analogBed(int celsius);
-float analog2temp(int raw, uint8_t e);
-float analog2tempBed(int raw);
-extern int target_raw[EXTRUDERS];  
-extern int heatingtarget_raw[EXTRUDERS];  
-extern int current_raw[EXTRUDERS];
-extern int target_raw_bed;
-extern int current_raw_bed;
-#ifdef BED_LIMIT_SWITCHING
-  extern int target_bed_low_temp ;  
-  extern int target_bed_high_temp ;
+// low level conversion routines
+// do not use these routines and variables outside of temperature.cpp
+extern int target_temperature[EXTRUDERS];  
+extern float current_temperature[EXTRUDERS];
+#ifdef SHOW_TEMP_ADC_VALUES
+  extern int current_temperature_raw[EXTRUDERS];
+  extern int current_temperature_bed_raw;
 #endif
-extern float Kp,Ki,Kd,Kc;
+extern int target_temperature_bed;
+extern float current_temperature_bed;
+#ifdef TEMP_SENSOR_1_AS_REDUNDANT
+  extern float redundant_temperature;
+#endif
+
+#if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1
+  extern unsigned char soft_pwm_bed;
+#endif
 
 #ifdef PIDTEMP
-  extern float pid_setpoint[EXTRUDERS];
+  extern float Kp,Ki,Kd,Kc;
+  float scalePID_i(float i);
+  float scalePID_d(float d);
+  float unscalePID_i(float i);
+  float unscalePID_d(float d);
+
+#endif
+#ifdef PIDTEMPBED
+  extern float bedKp,bedKi,bedKd;
 #endif
   
-// #ifdef WATCHPERIOD
-  extern int watch_raw[EXTRUDERS] ;
-//   extern unsigned long watchmillis;
-// #endif
-
-
+  
+#ifdef BABYSTEPPING
+  extern volatile int babystepsTodo[3];
+#endif
+  
 //high level conversion routines, for use outside of temperature.cpp
 //inline so that there is no performance decrease.
 //deg=degreeCelsius
 
 FORCE_INLINE float degHotend(uint8_t extruder) {  
-  return analog2temp(current_raw[extruder], extruder);
+  return current_temperature[extruder];
 };
 
+#ifdef SHOW_TEMP_ADC_VALUES
+  FORCE_INLINE float rawHotendTemp(uint8_t extruder) {  
+    return current_temperature_raw[extruder];
+  };
+
+  FORCE_INLINE float rawBedTemp() {  
+    return current_temperature_bed_raw;
+  };
+#endif
+
 FORCE_INLINE float degBed() {
-  return analog2tempBed(current_raw_bed);
+  return current_temperature_bed;
 };
 
 FORCE_INLINE float degTargetHotend(uint8_t extruder) {  
-  return analog2temp(target_raw[extruder], extruder);
+  return target_temperature[extruder];
 };
 
 FORCE_INLINE float degTargetBed() {   
-  return analog2tempBed(target_raw_bed);
+  return target_temperature_bed;
 };
 
 FORCE_INLINE void setTargetHotend(const float &celsius, uint8_t extruder) {  
-  target_raw[extruder] = temp2analog(celsius, extruder);
-#ifdef PIDTEMP
-  pid_setpoint[extruder] = celsius;
-#endif //PIDTEMP
+  target_temperature[extruder] = celsius;
 };
 
 FORCE_INLINE void setTargetBed(const float &celsius) {  
-  
-  target_raw_bed = temp2analogBed(celsius);
-  #ifdef BED_LIMIT_SWITCHING
-    if(celsius>BED_HYSTERESIS)
-    {
-    target_bed_low_temp= temp2analogBed(celsius-BED_HYSTERESIS);
-    target_bed_high_temp= temp2analogBed(celsius+BED_HYSTERESIS);
-    }
-    else
-    { 
-      target_bed_low_temp=0;
-      target_bed_high_temp=0;
-    }
-  #endif
+  target_temperature_bed = celsius;
 };
 
 FORCE_INLINE bool isHeatingHotend(uint8_t extruder){  
-  return target_raw[extruder] > current_raw[extruder];
+  return target_temperature[extruder] > current_temperature[extruder];
 };
 
 FORCE_INLINE bool isHeatingBed() {
-  return target_raw_bed > current_raw_bed;
+  return target_temperature_bed > current_temperature_bed;
 };
 
 FORCE_INLINE bool isCoolingHotend(uint8_t extruder) {  
-  return target_raw[extruder] < current_raw[extruder];
+  return target_temperature[extruder] < current_temperature[extruder];
 };
 
 FORCE_INLINE bool isCoolingBed() {
-  return target_raw_bed < current_raw_bed;
+  return target_temperature_bed < current_temperature_bed;
 };
 
 #define degHotend0() degHotend(0)
@@ -163,8 +165,7 @@ FORCE_INLINE void autotempShutdown(){
  #endif
 }
 
-void PID_autotune(float temp);
+void PID_autotune(float temp, int extruder, int ncycles);
 
 #endif
-
 

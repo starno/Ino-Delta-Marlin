@@ -400,7 +400,7 @@ bool SdBaseFile::make83Name(const char* str, uint8_t* name, const char** ptr) {
       // check size and only allow ASCII printable characters
       if (i > n || c < 0X21 || c > 0X7E)goto fail;
       // only upper case allowed in 8.3 names - convert lower to upper
-      name[i++] = c < 'a' || c > 'z' ?  c : c + ('A' - 'a');
+      name[i++] = (c < 'a' || c > 'z') ?  (c) : (c + ('A' - 'a'));
     }
   }
   *ptr = str;
@@ -1823,4 +1823,3 @@ void (*SdBaseFile::oldDateTime_)(uint16_t& date, uint16_t& time) = 0;  // NOLINT
 
 
 #endif
-
