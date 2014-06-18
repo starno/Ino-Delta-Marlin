@@ -53,10 +53,10 @@
 #define DELTA_SMOOTH_ROD_OFFSET 195.0 // mm
 
 // Horizontal offset of the universal joints on the end effector.
-#define DELTA_EFFECTOR_OFFSET 40.0  // mm  (Proto2 43.5, Proto3 44.5, variance due to printed parts)
+#define DELTA_EFFECTOR_OFFSET 45.3  // mm  (Proto2 43.5, Proto3 44.5, variance due to printed parts)
 
 // Horizontal offset of the universal joints on the carriages.
-#define DELTA_CARRIAGE_OFFSET 23.0 // mm
+#define DELTA_CARRIAGE_OFFSET 25.0 // mm
 
 // Effective horizontal distance bridged by diagonal push rods.
 #define DELTA_RADIUS (DELTA_SMOOTH_ROD_OFFSET-DELTA_EFFECTOR_OFFSET-DELTA_CARRIAGE_OFFSET)
@@ -113,7 +113,6 @@
 // M29  - Stop SD write
 // M30  - Delete file from SD (M30 filename.g)
 // M31  - Output time since last M109 or SD card start to serial
-// M33 -  Platform homing routine
 // M42  - Change pin status via gcode
 // M80  - Turn on Power Supply
 // M81  - Turn off Power Supply
@@ -233,10 +232,6 @@ bool Stopped=false;
 //===========================================================================
 
 void get_arc_coordinates();
-
-#ifdef EUCLID_PLATFORM
-void doPlatformLeveling();
-#endif
 
 void serial_echopair_P(const char *s_P, float v)
     { serialprintPGM(s_P); SERIAL_ECHO(v); }
@@ -955,13 +950,6 @@ void process_commands()
       autotempShutdown();
       }
       break;
-
-#ifdef EUCLID_PLATFORM
-    case 33:
-      doPlatformLeveling();
-      break;
-#endif
-
     case 42: //M42 -Change pin status via gcode
       if (code_seen('S'))
       {
@@ -1679,11 +1667,9 @@ void prepare_move()
   if (cartesian_mm < 0.000001) { return; }
   float seconds = 6000 * cartesian_mm / feedrate / feedmultiply;
   int steps = max(1, int(DELTA_SEGMENTS_PER_SECOND * seconds));
-  if (steps > 1) {
-    SERIAL_ECHOPGM("mm="); SERIAL_ECHO(cartesian_mm);
-    SERIAL_ECHOPGM(" seconds="); SERIAL_ECHO(seconds);
-    SERIAL_ECHOPGM(" steps="); SERIAL_ECHOLN(steps);
-  }
+  SERIAL_ECHOPGM("mm="); SERIAL_ECHO(cartesian_mm);
+  SERIAL_ECHOPGM(" seconds="); SERIAL_ECHO(seconds);
+  SERIAL_ECHOPGM(" steps="); SERIAL_ECHOLN(steps);
   for (int s = 1; s <= steps; s++) {
     float fraction = float(s) / float(steps);
     for(int8_t i=0; i < NUM_AXIS; i++) {
@@ -1898,78 +1884,5 @@ void setPwmFrequency(uint8_t pin, int val)
 
   }
 }
-
-
 #endif
 
-#ifdef EUCLID_PLATFORM
-
-void moveToXYZ(float x, float y, float z)
-{
-  destination[X_AXIS] = x;
-  destination[Y_AXIS] = y;
-  destination[Z_AXIS] = z;
-  prepare_move();
-}
-
-float pressButton(float x, float y, float zHover, float zMin)
-{
-  float z=zHover;
-  
-  while((digitalRead(BUILD_PLANE_BUTTON_PIN)==HIGH) && (z > zMin)) //go until we hit the button
-    {
-      moveToXYZ(x, y, z);
-      //delay(50);
-      z-=0.01;
-    }
-  SERIAL_ECHO(z);
-  return z;  
-}
-
-void doPlatformLeveling()
-{
-  float xTower[3];
-  float yTower[3];
-  float zTower[3];
-//  float[3] planeVector1, planeVector2, normalVector;
-
-  pinMode(BUILD_PLANE_BUTTON_PIN,INPUT_PULLUP);
-  float z;
-  moveToXYZ(0,0,50);        // center 
-
-  // Find the Z tower button
-  moveToXYZ(ZTOWER_X, ZTOWER_Y,HOVER_HEIGHT);    //z hover
-  z=pressButton(ZTOWER_X, ZTOWER_Y, HOVER_HEIGHT, BUTTON_MIN);
-  zTower[X_AXIS]=ZTOWER_X;
-  zTower[Y_AXIS]=ZTOWER_Y;
-  zTower[Z_AXIS]=z+BUILD_PLANE_OFFSET;
-  moveToXYZ(ZTOWER_X, ZTOWER_Y,HOVER_HEIGHT);    //z hover
-  delay(50); // Give the motion planner time to pick up the command
-  
-  // Find the X tower button
-  moveToXYZ(XTOWER_X, XTOWER_Y,HOVER_HEIGHT);    //x hover
-  z=pressButton(XTOWER_X, XTOWER_Y, HOVER_HEIGHT, BUTTON_MIN);
-  xTower[X_AXIS]=XTOWER_X;
-  xTower[Y_AXIS]=XTOWER_Y;
-  xTower[Z_AXIS]=z+BUILD_PLANE_OFFSET;
-  moveToXYZ(XTOWER_X, XTOWER_Y,HOVER_HEIGHT);    //x hover
-  delay(50); // Give the motion planner time to pick up the command
-
-  // Find the Y tower button
-  moveToXYZ(YTOWER_X, YTOWER_Y,HOVER_HEIGHT);    //y hover
-  z=pressButton(YTOWER_X, YTOWER_Y, HOVER_HEIGHT, BUTTON_MIN);
-  yTower[X_AXIS]=YTOWER_X;
-  yTower[Y_AXIS]=YTOWER_Y;
-  yTower[Z_AXIS]=z+BUILD_PLANE_OFFSET;
-  moveToXYZ(YTOWER_X, YTOWER_Y,HOVER_HEIGHT);    //y hover
-  delay(50); // Give the motion planner time to pick up the command
-
-  SERIAL_ECHO("\nXYZ ");
-  SERIAL_ECHO(xTower[Z_AXIS]);
-  SERIAL_ECHO(", ");
-  SERIAL_ECHO(yTower[Z_AXIS]);
-  SERIAL_ECHO(", ");
-  SERIAL_ECHO(zTower[Z_AXIS]);
-  SERIAL_ECHO("\n");
-}
-#endif
