@@ -463,7 +463,7 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 
   #define BUILD_PLANE_BUTTON_PIN 18	// Digital input that the homing buttons are connected to.
 
-  #define BUILD_PLANE_OFFSET 5   // Difference in height between the top of the button and the build platform
+  #define BUILD_PLANE_OFFSET 3.0   // Difference in height between the top of the button and the build platform
   
 #endif
 
