@@ -339,8 +339,7 @@ bool setTargetedHotend(int code);
 
 #ifdef EUCLID_PLATFORM
 void doPlatformLeveling();
-//void moveToXYZ();
-//void pressButton();
+void calibratePlatformLeveling();
 void pokeButton();
 #endif
 
@@ -1808,15 +1807,19 @@ void process_commands()
       break;
       
 #ifdef EUCLID_PLATFORM
-    case 33:
+    case 33: //poke button locations defined in Configuration.h and get serial feedback of heights
       doPlatformLeveling();
       break;
       
-    case 34:    
- //     moveToXYZ();
+    case 34: //poke buttons at current (x,y) location and get serial feedback of heights  
       pokeButton();
       break;
       
+      
+	case 35: //automatically correct endstop heights after poking button locations defined in Configuration.h
+      calibratePlatformLeveling();
+      break;  
+       
 #endif
 
     case 42: //M42 -Change pin status via gcode
@@ -3735,6 +3738,129 @@ void doPlatformLeveling()
   SERIAL_ECHO(", ");
   SERIAL_ECHO(zTower[Z_AXIS]);
   SERIAL_ECHO("\n");
+}
+
+void calibratePlatformLeveling()
+{ 
+  float xTower[3];
+  float yTower[3];
+  float zTower[3];
+  //float[3] planeVector1, planeVector2, normalVector;
+
+  pinMode(BUILD_PLANE_BUTTON_PIN,INPUT_PULLUP);
+  float z;
+
+  //reset endstop heights to 0 before performing routine
+  endstop_adj[X_AXIS] = 0.0;
+  endstop_adj[Y_AXIS] = 0.0;
+  endstop_adj[Z_AXIS] = 0.0;
+
+  // Home all axes //
+  #ifdef ENABLE_AUTO_BED_LEVELING
+    plan_bed_level_matrix.set_to_identity();  //Reset the plane ("erase" all leveling data)
+  #endif //ENABLE_AUTO_BED_LEVELING
+
+  saved_feedrate = feedrate;
+  saved_feedmultiply = feedmultiply;
+  feedmultiply = 100;
+  previous_millis_cmd = millis();
+
+  enable_endstops(true);
+
+  for(int8_t i=0; i < NUM_AXIS; i++) {
+    destination[i] = current_position[i];
+  }
+  feedrate = 0.0;
+
+  // Move all carriages up together until the first endstop is hit.
+  current_position[X_AXIS] = 0;
+  current_position[Y_AXIS] = 0;
+  current_position[Z_AXIS] = 0;
+  plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+
+  destination[X_AXIS] = 3 * Z_MAX_LENGTH;
+  destination[Y_AXIS] = 3 * Z_MAX_LENGTH;
+  destination[Z_AXIS] = 3 * Z_MAX_LENGTH;
+  feedrate = 1.732 * homing_feedrate[X_AXIS];
+  plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], feedrate/60, active_extruder);
+  st_synchronize();
+  endstops_hit_on_purpose();
+
+  current_position[X_AXIS] = destination[X_AXIS];
+  current_position[Y_AXIS] = destination[Y_AXIS];
+  current_position[Z_AXIS] = destination[Z_AXIS];
+
+  // take care of back off and rehome now we are all at the top
+  HOMEAXIS(X);
+  HOMEAXIS(Y);
+  HOMEAXIS(Z);
+
+  calculate_delta(current_position);
+  plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS]);
+
+  #ifdef ENDSTOPS_ONLY_FOR_HOMING
+    enable_endstops(false);
+  #endif
+
+  feedrate = saved_feedrate;
+  feedmultiply = saved_feedmultiply;
+  previous_millis_cmd = millis();
+  endstops_hit_on_purpose();
+
+  //move to centroid before touching buttons
+  moveToXYZ(0,0,50);        // centroid 
+
+  // Find the Z tower button
+  moveToXYZ(ZTOWER_X, ZTOWER_Y,HOVER_HEIGHT);    //z hover
+  z=pressButton(ZTOWER_X, ZTOWER_Y, HOVER_HEIGHT, BUTTON_MIN);
+  zTower[X_AXIS]=ZTOWER_X;
+  zTower[Y_AXIS]=ZTOWER_Y;
+  zTower[Z_AXIS]=z;
+  moveToXYZ(ZTOWER_X, ZTOWER_Y,HOVER_HEIGHT);   //z hover
+  moveToXYZ(0,0,50);        // centroid
+  delay(50); // Give the motion planner time to pick up the command
+
+  // Find the X tower button
+  moveToXYZ(XTOWER_X, XTOWER_Y,HOVER_HEIGHT);    //x hover
+  z=pressButton(XTOWER_X, XTOWER_Y, HOVER_HEIGHT, BUTTON_MIN);
+  xTower[X_AXIS]=XTOWER_X;
+  xTower[Y_AXIS]=XTOWER_Y;
+  xTower[Z_AXIS]=z;
+  moveToXYZ(XTOWER_X, XTOWER_Y,HOVER_HEIGHT);    //x hover
+  moveToXYZ(0,0,50);        // centroid
+  delay(50); // Give the motion planner time to pick up the command
+
+  // Find the Y tower button
+  moveToXYZ(YTOWER_X, YTOWER_Y,HOVER_HEIGHT);    //y hover
+  z=pressButton(YTOWER_X, YTOWER_Y, HOVER_HEIGHT, BUTTON_MIN);
+  yTower[X_AXIS]=YTOWER_X;
+  yTower[Y_AXIS]=YTOWER_Y;
+  yTower[Z_AXIS]=z;
+  moveToXYZ(YTOWER_X, YTOWER_Y,HOVER_HEIGHT);    //y hover
+  moveToXYZ(0,0,50);        // centroid
+  delay(50); // Give the motion planner time to pick up the command
+
+  SERIAL_ECHO("\nXYZ ");
+  SERIAL_ECHO(xTower[Z_AXIS]);
+  SERIAL_ECHO(", ");
+  SERIAL_ECHO(yTower[Z_AXIS]);
+  SERIAL_ECHO(", ");
+  SERIAL_ECHO(zTower[Z_AXIS]);
+  SERIAL_ECHO("\n");
+
+  endstop_adj[X_AXIS] = BUILD_PLANE_OFFSET + xTower[Z_AXIS];
+  endstop_adj[Y_AXIS] = BUILD_PLANE_OFFSET + yTower[Z_AXIS];
+  endstop_adj[Z_AXIS] = BUILD_PLANE_OFFSET + zTower[Z_AXIS];
+
+  SERIAL_ECHO("\nEndstop Height Adjusted: ");
+  SERIAL_ECHO("X");
+  SERIAL_ECHO(endstop_adj[X_AXIS]);
+  SERIAL_ECHO(", ");
+  SERIAL_ECHO("Y");
+  SERIAL_ECHO(endstop_adj[Y_AXIS]);
+  SERIAL_ECHO(", ");
+  SERIAL_ECHO("Z");
+  SERIAL_ECHO(endstop_adj[Z_AXIS]);
 }
 
 void pokeButton()
