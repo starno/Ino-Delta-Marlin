@@ -338,9 +338,18 @@ void get_arc_coordinates();
 bool setTargetedHotend(int code);
 
 #ifdef EUCLID_PLATFORM
+//float pokeButtonA();
+//float pokeButtonB();
+//float pokeButtonC();
 void doPlatformLeveling();
 void calibratePlatformLeveling();
 void pokeButton();
+void moveTowerA();
+void moveTowerB();
+void moveTowerC();
+float xTower[Z_AXIS]; 
+float yTower[Z_AXIS]; 
+float zTower[Z_AXIS];
 #endif
 
 void serial_echopair_P(const char *s_P, float v)
@@ -1808,7 +1817,7 @@ void process_commands()
       
 #ifdef EUCLID_PLATFORM
     case 33: //poke button locations defined in Configuration.h and get serial feedback of heights
-      doPlatformLeveling();
+      void doPlatformLeveling();
       break;
       
     case 34: //poke buttons at current (x,y) location and get serial feedback of heights  
@@ -1816,9 +1825,21 @@ void process_commands()
       break;
       
       
-	case 35: //automatically correct endstop heights after poking button locations defined in Configuration.h
+    case 35: //automatically correct endstop heights after poking button locations defined in Configuration.h
       calibratePlatformLeveling();
       break;  
+      
+    case 36: //Go to the platform button x,y coordinates and hover height from Configuration.h
+      moveTowerA();
+      break;
+    
+    case 37: //Go to the platform button x,y coordinates and hover height from Configuration.h  
+      moveTowerB();
+      break;
+      
+    case 38: //Go to the platform button x,y coordinates and hover height from Configuration.h
+      moveTowerC();
+      break;
        
 #endif
 
@@ -3690,11 +3711,59 @@ float pressButton(float x, float y, float zHover, float zMin)
   return z;  
 }
 
-void doPlatformLeveling()
+float pokeButtonA()
 {
   float xTower[3];
+//  float[3] planeVector1, planeVector2, normalVector;
+
+  pinMode(BUILD_PLANE_BUTTON_PIN,INPUT_PULLUP);
+  float z;
+  moveToXYZ(0,0,50);        // centroid 
+
+  // Find the X tower button
+  moveToXYZ(XTOWER_X, XTOWER_Y,HOVER_HEIGHT);    //x hover
+  z=pressButton(XTOWER_X, XTOWER_Y, HOVER_HEIGHT, BUTTON_MIN);
+  xTower[X_AXIS]=XTOWER_X;
+  xTower[Y_AXIS]=XTOWER_Y;
+  xTower[Z_AXIS]=z;
+  moveToXYZ(XTOWER_X, XTOWER_Y,HOVER_HEIGHT);    //x hover
+  moveToXYZ(0,0,50);        // centroid
+  delay(50); // Give the motion planner time to pick up the command
+
+  SERIAL_ECHO("\nXYZ ");
+  SERIAL_ECHO(xTower[Z_AXIS]);
+  
+  return xTower[Z_AXIS];
+}
+
+float pokeButtonB()
+{
   float yTower[3];
-  float zTower[3];
+//  float[3] planeVector1, planeVector2, normalVector;
+
+  pinMode(BUILD_PLANE_BUTTON_PIN,INPUT_PULLUP);
+  float z;
+  moveToXYZ(0,0,50);        // centroid 
+
+  // Find the Y tower button
+  moveToXYZ(YTOWER_X, YTOWER_Y,HOVER_HEIGHT);    //y hover
+  z=pressButton(YTOWER_X, YTOWER_Y, HOVER_HEIGHT, BUTTON_MIN);
+  yTower[X_AXIS]=YTOWER_X;
+  yTower[Y_AXIS]=YTOWER_Y;
+  yTower[Z_AXIS]=z;
+  moveToXYZ(YTOWER_X, YTOWER_Y,HOVER_HEIGHT);    //y hover
+  moveToXYZ(0,0,50);        // centroid
+  delay(50); // Give the motion planner time to pick up the command
+
+  SERIAL_ECHO("\nXYZ ");
+  SERIAL_ECHO(yTower[Z_AXIS]);
+  
+  return yTower[Z_AXIS];
+}
+
+float pokeButtonC()
+{
+  float xTower[3];
 //  float[3] planeVector1, planeVector2, normalVector;
 
   pinMode(BUILD_PLANE_BUTTON_PIN,INPUT_PULLUP);
@@ -3710,37 +3779,21 @@ void doPlatformLeveling()
   moveToXYZ(ZTOWER_X, ZTOWER_Y,HOVER_HEIGHT);   //z hover
   moveToXYZ(0,0,50);        // centroid
   delay(50); // Give the motion planner time to pick up the command
-  
-  // Find the X tower button
-  moveToXYZ(XTOWER_X, XTOWER_Y,HOVER_HEIGHT);    //x hover
-  z=pressButton(XTOWER_X, XTOWER_Y, HOVER_HEIGHT, BUTTON_MIN);
-  xTower[X_AXIS]=XTOWER_X;
-  xTower[Y_AXIS]=XTOWER_Y;
-  xTower[Z_AXIS]=z;
-  moveToXYZ(XTOWER_X, XTOWER_Y,HOVER_HEIGHT);    //x hover
-  moveToXYZ(0,0,50);        // centroid
-  delay(50); // Give the motion planner time to pick up the command
-
-  // Find the Y tower button
-  moveToXYZ(YTOWER_X, YTOWER_Y,HOVER_HEIGHT);    //y hover
-  z=pressButton(YTOWER_X, YTOWER_Y, HOVER_HEIGHT, BUTTON_MIN);
-  yTower[X_AXIS]=YTOWER_X;
-  yTower[Y_AXIS]=YTOWER_Y;
-  yTower[Z_AXIS]=z;
-  moveToXYZ(YTOWER_X, YTOWER_Y,HOVER_HEIGHT);    //y hover
-  moveToXYZ(0,0,50);        // centroid
-  delay(50); // Give the motion planner time to pick up the command
 
   SERIAL_ECHO("\nXYZ ");
-  SERIAL_ECHO(xTower[Z_AXIS]);
-  SERIAL_ECHO(", ");
-  SERIAL_ECHO(yTower[Z_AXIS]);
-  SERIAL_ECHO(", ");
   SERIAL_ECHO(zTower[Z_AXIS]);
-  SERIAL_ECHO("\n");
+  
+  return zTower[Z_AXIS];
 }
 
-void calibratePlatformLeveling()
+void doPlatformLeveling()
+{
+float buttonHeightA = pokeButtonA();
+float buttonHeightB = pokeButtonB();
+float buttonHeightC = pokeButtonC();
+}
+
+void calibratePlatformLeveling()//xTower[Z_AXIS], yTower[Z_AXIS], zTower[Z_AXIS])
 { 
   float xTower[3];
   float yTower[3];
@@ -3882,5 +3935,44 @@ void pokeButton()
   SERIAL_ECHO(z);
   SERIAL_ECHO("\n");
 }  
+
+void moveTowerA()
+{   
+  float xTower[3];
+//  float[3] planeVector1, planeVector2, normalVector;
+
+  pinMode(BUILD_PLANE_BUTTON_PIN,INPUT_PULLUP);
+  float z;
+
+  // Find the Z tower button
+  moveToXYZ(XTOWER_X, XTOWER_Y,HOVER_HEIGHT);  //z hover
+  delay(50); // Give the motion planner time to pick up the command
+}
+
+void moveTowerB()
+{
+  float xTower[3];
+//  float[3] planeVector1, planeVector2, normalVector;
+
+  pinMode(BUILD_PLANE_BUTTON_PIN,INPUT_PULLUP);
+  float z;
+
+  // Find the Z tower button 
+  moveToXYZ(YTOWER_X, YTOWER_Y,HOVER_HEIGHT);   //z hover
+  delay(50); // Give the motion planner time to pick up the command
+}
+
+void moveTowerC()
+{
+  float xTower[3];
+//  float[3] planeVector1, planeVector2, normalVector;
+
+  pinMode(BUILD_PLANE_BUTTON_PIN,INPUT_PULLUP);
+  float z;
+
+  // Find the Z tower button
+   moveToXYZ(ZTOWER_X, ZTOWER_Y,HOVER_HEIGHT);   //z hover
+   delay(50); // Give the motion planner time to pick up the command
+}
 #endif
 
